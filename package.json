@@ -1,0 +1,104 @@
+{
+  "name": "spfxresources",
+  "displayName": "SpfxResources",
+  "description": "",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.81.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/loc/*",
+    "onLanguage:typescript"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "spfx-resources.refresh",
+        "title": "Refresh",
+        "icon": "assets/refresh.svg"
+      },
+      {
+        "command": "spfx-resources.edit-resource",
+        "title": "Edit",
+        "icon": "assets/edit.svg"
+      },
+      {
+        "command": "spfx-resources.create-resource",
+        "title": "Create"
+      },
+      {
+        "command": "spfx-resources.delete-resource",
+        "title": "Delete",
+        "icon": "assets/bin.svg"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "spfx-resources.refresh",
+          "when": "view == spfx-resource-projects",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "spfx-resources.delete-resource",
+          "when": "view == spfx-resource-projects && viewItem == NamedResource",
+          "group": "inline",
+          "order": 2
+        },
+        {
+          "command": "spfx-resources.edit-resource",
+          "when": "view == spfx-resource-projects && viewItem == NamedResource",
+          "group": "inline",
+          "order": 1
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "spfx-resources",
+          "title": "SPFx Resources",
+          "icon": "assets/activitybar.svg"
+        }
+      ]
+    },
+    "views": {
+      "spfx-resources": [
+        {
+          "id": "spfx-resource-projects",
+          "name": "Projects"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "yarn run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "yarn run compile && yarn run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "20.10.4",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.2",
+    "@typescript-eslint/parser": "^6.13.2",
+    "eslint": "^8.55.0",
+    "glob": "^10.3.10",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "ignore": "^5.3.0",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11",
+    "zod": "^3.22.4"
+  }
+}

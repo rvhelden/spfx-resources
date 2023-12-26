@@ -33,22 +33,36 @@ export type Localization = {
 };
 
 export class LocalizationRepository {
-  private readonly translationsCache = new Map<string, { version: number; translations: Translation[] }>();
-  private readonly sourceFileCache = new Map<string, { version: number; sourceFile: ts.SourceFile }>();
+  private readonly translationsCache = new Map<string, Translation[]>();
+  private readonly sourceFileCache = new Map<string, ts.SourceFile>();
 
-  public async getLocalization(document: vscode.TextDocument) {
-    const source = this.parseFile(document);
+  constructor() {
+    vscode.workspace.onDidChangeTextDocument((e) => {
+      if (this.translationsCache.has(e.document.fileName)) {
+        //console.log(`Clearing translations cache for ${e.document.fileName}`);
+        this.translationsCache.delete(e.document.fileName);
+      }
+
+      if (this.sourceFileCache.has(e.document.fileName)) {
+        //console.log(`Clearing sourceFile cache for ${e.document.fileName}`);
+        this.sourceFileCache.delete(e.document.fileName);
+      }
+    });
+  }
+
+  public async getLocalization(fileName: string) {
+    const source = await this.parseFile(fileName);
     const interfaces = this.getInterfaceDeclarations(source);
     const declaration = interfaces.find((i) => i.name.text.endsWith("Strings"));
 
     if (declaration !== undefined) {
-      const availableLanguages = this.availableLanguages(document);
+      const availableLanguages = this.availableLanguages(fileName);
 
       return {
         availableLanguages,
         localizableStrings: await this.getLocalizableStrings(availableLanguages, source),
         range: createRange(source, declaration.name),
-        uri: document.uri,
+        uri: vscode.Uri.file(fileName),
         created: new Date(),
       } as Localization;
     }
@@ -61,9 +75,7 @@ export class LocalizationRepository {
     language: Language,
     translation: string
   ): Promise<vscode.Range | undefined> {
-    const document = await vscode.workspace.openTextDocument(language.fileName);
-
-    const source = this.parseFile(document);
+    const source = await this.parseFile(language.fileName);
     const lastPropertyAssignment = findAll(source, ts.isPropertyAssignment).pop();
     if (lastPropertyAssignment === undefined) {
       return undefined;
@@ -72,6 +84,8 @@ export class LocalizationRepository {
     const range = createRange(source, lastPropertyAssignment);
 
     const text = `,\n\t\t${localizableString.name}: "${translation}"`;
+
+    const document = await vscode.workspace.openTextDocument(language.fileName);
 
     const edit = new vscode.WorkspaceEdit();
     edit.insert(document.uri, range.end, text);
@@ -83,6 +97,26 @@ export class LocalizationRepository {
       new vscode.Position(range.start.line + 1, 2),
       new vscode.Position(range.start.line + 1, text.length - 1)
     );
+  }
+
+  public async updateTranslation(localizableString: LocalizableString) {
+    for (const translation of localizableString.translations) {
+      const source = await this.parseFile(translation.language.fileName);
+      const properties = this.getPropertyAssignments(source);
+
+      const property = properties.find((p) => (p.name as ts.StringLiteral).text === translation.name);
+      if (property === undefined) {
+        continue;
+      }
+
+      const document = await vscode.workspace.openTextDocument(translation.language.fileName);
+
+      const edit = new vscode.WorkspaceEdit();
+      edit.replace(document.uri, createRange(source, property.initializer), `"${translation.text}"`);
+
+      await vscode.workspace.applyEdit(edit);
+      await document.save();
+    }
   }
 
   private async getLocalizableStrings(languages: Language[], source: ts.SourceFile) {
@@ -107,9 +141,9 @@ export class LocalizationRepository {
     return localizableStrings;
   }
 
-  public availableLanguages(document: vscode.TextDocument) {
-    const folder = path.dirname(document.uri.fsPath);
-    const files = fs.readdirSync(path.dirname(document.uri.fsPath));
+  public availableLanguages(fileName: string) {
+    const folder = path.dirname(fileName);
+    const files = fs.readdirSync(path.dirname(fileName));
 
     const languages = new Array<Language>();
 
@@ -126,25 +160,19 @@ export class LocalizationRepository {
     return languages;
   }
 
-  private getOrAddCacheEntry(document: vscode.TextDocument) {
-    let entry = this.translationsCache.get(document.fileName);
+  private getOrAddCacheEntry(fileName: string) {
+    let entry = this.translationsCache.get(fileName);
     let isCreated = false;
 
-    if (entry?.version !== document.version) {
+    if (entry === undefined) {
       isCreated = true;
-      entry ??= {
-        version: document.version,
-        translations: [],
-      };
-
-      entry.translations.length = 0;
-
-      this.translationsCache.set(document.fileName, entry);
+      entry = [];
+      this.translationsCache.set(fileName, entry);
     }
 
     return {
       isCreated,
-      entry,
+      translations: entry,
     };
   }
 
@@ -152,15 +180,13 @@ export class LocalizationRepository {
     const translations = new Array<Translation>();
 
     for (const language of languages) {
-      const document = await vscode.workspace.openTextDocument(language.fileName);
-
-      const cacheEntry = this.getOrAddCacheEntry(document);
+      const cacheEntry = this.getOrAddCacheEntry(language.fileName);
       if (!cacheEntry.isCreated) {
-        translations.push(...cacheEntry.entry.translations);
+        translations.push(...cacheEntry.translations);
         continue;
       }
 
-      const source = this.parseFile(document);
+      const source = await this.parseFile(language.fileName);
       const properties = this.getPropertyAssignments(source);
 
       for (const assignment of properties) {
@@ -176,7 +202,7 @@ export class LocalizationRepository {
           text,
         };
 
-        cacheEntry.entry.translations.push(translation);
+        cacheEntry.translations.push(translation);
         translations.push(translation);
       }
     }
@@ -184,20 +210,18 @@ export class LocalizationRepository {
     return translations;
   }
 
-  private parseFile(document: vscode.TextDocument) {
-    let entry = this.sourceFileCache.get(document.fileName);
-    if (entry?.version === document.version) {
-      return entry.sourceFile;
+  private async parseFile(fileName: string) {
+    let entry = this.sourceFileCache.get(fileName);
+    if (entry !== undefined) {
+      return entry;
     }
 
-    entry = {
-      version: document.version,
-      sourceFile: ts.createSourceFile(document.fileName, document.getText(), ts.ScriptTarget.Latest),
-    };
+    const document = await vscode.workspace.openTextDocument(fileName);
+    const sourceFile = ts.createSourceFile(document.fileName, document.getText(), ts.ScriptTarget.Latest);
 
-    this.sourceFileCache.set(document.fileName, entry);
+    this.sourceFileCache.set(document.fileName, sourceFile);
 
-    return entry.sourceFile;
+    return sourceFile;
   }
 
   private getPropertyAssignments(source: ts.SourceFile) {

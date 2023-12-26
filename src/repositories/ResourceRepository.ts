@@ -2,7 +2,7 @@ import { workspace } from "vscode";
 import { NamedResource, ProjectItem, ResourcePath } from "../Types";
 import * as path from "path";
 import * as fs from "fs";
-import spfxConfig from "../spfxConfig";
+import { type, narrow, Problems, Type } from "arktype";
 
 export class ResourceRepository {
   public async getProjects() {
@@ -37,13 +37,17 @@ export class ResourceRepository {
       return results;
     }
 
-    const config = spfxConfig.parse(JSON.parse(fs.readFileSync(configPath, "utf8")));
-
-    for (const resourceName in config.localizedResources) {
-      const path = config.localizedResources[resourceName];
-      if (!path) {
-        continue;
+    const config = spfxConfig(JSON.parse(fs.readFileSync(configPath, "utf8")));
+    if (config.data === undefined || config.problems !== undefined) {
+      for (const problem of config.problems) {
+        console.error(problem.toString());
       }
+
+      return results;
+    }
+
+    for (const resourceName in config.data.localizedResources) {
+      const path = config.data.localizedResources[resourceName];
 
       const resourcePath = this.resolveResourcePath(projectFolder, path);
 
@@ -110,4 +114,30 @@ export class ResourceRepository {
   private fromNodeModules(resourcePath: string) {
     return resourcePath.indexOf("node_modules") !== -1;
   }
+}
+
+const spfxConfig = type({
+  localizedResources: record(type("string")),
+});
+
+export function record<K extends string, V>(valueType: Type<V>): Type<Record<K, V>> {
+  return narrow(type("object"), (data, problems): data is Record<K, V> => {
+    return Object.entries(data).every(([k, v]) => {
+      const valueCheck = valueType(v);
+
+      if (valueCheck.problems) {
+        for (const problem of valueCheck.problems) {
+          problems.addProblem(problem);
+        }
+
+        return false;
+      }
+
+      if (valueCheck.data !== v) {
+        (data as any)[k] = valueCheck.data;
+      }
+
+      return true;
+    });
+  }) as any;
 }

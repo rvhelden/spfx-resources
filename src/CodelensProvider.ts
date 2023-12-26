@@ -18,7 +18,7 @@ export class CodelensProvider implements CodeLensProvider {
   }
 
   public async provideCodeLenses(document: TextDocument) {
-    const localization = await this.localizationRepository.getLocalization(document);
+    const localization = await this.localizationRepository.getLocalization(document.fileName);
     if (localization !== undefined) {
       return createLenses(document, localization);
     }

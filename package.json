@@ -1,6 +1,6 @@
 {
   "name": "spfxresources",
-  "displayName": "SpfxResources",
+  "displayName": "SPFx Resources",
   "description": "",
   "version": "0.0.1",
   "engines": {
@@ -15,6 +15,16 @@
     "onLanguage:typescript"
   ],
   "contributes": {
+    "configuration": {
+      "title": "SPFx Resources",
+      "properties": {
+        "spfxresources.openAIKey": {
+          "type": "string",
+          "default": "",
+          "description": "The API key for OpenAI."
+        }
+      }
+    },
     "commands": [
       {
         "command": "spfx-resources.refresh",
@@ -95,10 +105,11 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "arktype": "^1.0.28-alpha",
     "ignore": "^5.3.0",
+    "openai": "^4.24.1",
     "vscode-languageclient": "^9.0.1",
     "vscode-languageserver": "^9.0.1",
-    "vscode-languageserver-textdocument": "^1.0.11",
-    "zod": "^3.22.4"
+    "vscode-languageserver-textdocument": "^1.0.11"
   }
 }

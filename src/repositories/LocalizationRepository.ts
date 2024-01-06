@@ -9,7 +9,7 @@ export type Language = {
   fileName: string;
 };
 
-export type Translation = {
+export type Resource = {
   language: Language;
   assignmentRange: vscode.Range;
   nameRange: vscode.Range;
@@ -19,9 +19,10 @@ export type Translation = {
 };
 
 export type LocalizableString = {
+  availableLanguages: Language[];
   range: vscode.Range;
   name: string;
-  translations: Translation[];
+  resources: Resource[];
 };
 
 export type Localization = {
@@ -33,19 +34,30 @@ export type Localization = {
 };
 
 export class LocalizationRepository {
-  private readonly translationsCache = new Map<string, Translation[]>();
+  private readonly translationsCache = new Map<string, Resource[]>();
   private readonly sourceFileCache = new Map<string, ts.SourceFile>();
+
+  private _onDidChange = new vscode.EventEmitter<void>();
+  public readonly onDidChange = this._onDidChange.event;
 
   constructor() {
     vscode.workspace.onDidChangeTextDocument((e) => {
+      let hasChanged = false;
+
       if (this.translationsCache.has(e.document.fileName)) {
         //console.log(`Clearing translations cache for ${e.document.fileName}`);
         this.translationsCache.delete(e.document.fileName);
+        hasChanged = true;
       }
 
       if (this.sourceFileCache.has(e.document.fileName)) {
         //console.log(`Clearing sourceFile cache for ${e.document.fileName}`);
         this.sourceFileCache.delete(e.document.fileName);
+        hasChanged = true;
+      }
+
+      if (hasChanged) {
+        this._onDidChange.fire();
       }
     });
   }
@@ -70,13 +82,24 @@ export class LocalizationRepository {
     return undefined;
   }
 
+  public async addOrUpdate(localizableString: LocalizableString, language: Language, translation: string) {
+    const source = await this.parseFile(language.fileName);
+    const entry = this.findResourceEntry(source, localizableString.name);
+
+    if (entry === undefined) {
+      return await this.addTranslation(localizableString, language, translation);
+    } else {
+      return await this.updateTranslation(localizableString);
+    }
+  }
+
   public async addTranslation(
     localizableString: LocalizableString,
     language: Language,
     translation: string
   ): Promise<vscode.Range | undefined> {
     const source = await this.parseFile(language.fileName);
-    const lastPropertyAssignment = findAll(source, ts.isPropertyAssignment).pop();
+    const lastPropertyAssignment = this.getResourceEntries(source).pop();
     if (lastPropertyAssignment === undefined) {
       return undefined;
     }
@@ -100,19 +123,17 @@ export class LocalizationRepository {
   }
 
   public async updateTranslation(localizableString: LocalizableString) {
-    for (const translation of localizableString.translations) {
-      const source = await this.parseFile(translation.language.fileName);
-      const properties = this.getPropertyAssignments(source);
-
-      const property = properties.find((p) => (p.name as ts.StringLiteral).text === translation.name);
-      if (property === undefined) {
+    for (const resource of localizableString.resources) {
+      const source = await this.parseFile(resource.language.fileName);
+      const entry = this.findResourceEntry(source, resource.name);
+      if (entry === undefined) {
         continue;
       }
 
-      const document = await vscode.workspace.openTextDocument(translation.language.fileName);
+      const document = await vscode.workspace.openTextDocument(resource.language.fileName);
 
       const edit = new vscode.WorkspaceEdit();
-      edit.replace(document.uri, createRange(source, property.initializer), `"${translation.text}"`);
+      edit.replace(document.uri, createRange(source, entry.initializer), `"${resource.text}"`);
 
       await vscode.workspace.applyEdit(edit);
       await document.save();
@@ -130,9 +151,10 @@ export class LocalizationRepository {
       const name = signature.name.getText(source);
 
       const localizableString: LocalizableString = {
+        availableLanguages: languages,
         range: createRange(source, signature),
         name,
-        translations: translations.filter((t) => t.name === name),
+        resources: translations.filter((t) => t.name === name),
       };
 
       localizableStrings.push(localizableString);
@@ -177,7 +199,7 @@ export class LocalizationRepository {
   }
 
   private async getTranslations(languages: Language[]) {
-    const translations = new Array<Translation>();
+    const translations = new Array<Resource>();
 
     for (const language of languages) {
       const cacheEntry = this.getOrAddCacheEntry(language.fileName);
@@ -187,17 +209,17 @@ export class LocalizationRepository {
       }
 
       const source = await this.parseFile(language.fileName);
-      const properties = this.getPropertyAssignments(source);
+      const resources = this.getResourceEntries(source);
 
-      for (const assignment of properties) {
-        const name = (assignment.name as ts.StringLiteral).text;
-        const text = (assignment.initializer as ts.StringLiteral).text;
+      for (const resource of resources) {
+        const name = (resource.name as ts.StringLiteral).text;
+        const text = (resource.initializer as ts.StringLiteral).text;
 
-        const translation: Translation = {
+        const translation: Resource = {
           language: language,
-          assignmentRange: createRange(source, assignment),
-          textRange: createRange(source, assignment),
-          nameRange: createRange(source, assignment),
+          assignmentRange: createRange(source, resource),
+          textRange: createRange(source, resource),
+          nameRange: createRange(source, resource),
           name,
           text,
         };
@@ -224,7 +246,11 @@ export class LocalizationRepository {
     return sourceFile;
   }
 
-  private getPropertyAssignments(source: ts.SourceFile) {
+  private findResourceEntry(source: ts.SourceFile, name: string) {
+    return this.getResourceEntries(source).find((p) => (p.name as ts.StringLiteral).text === name);
+  }
+
+  private getResourceEntries(source: ts.SourceFile) {
     return findAll<ts.PropertyAssignment>(source, ts.isPropertyAssignment);
   }
 

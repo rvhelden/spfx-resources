@@ -15,6 +15,10 @@ export class CodelensProvider implements CodeLensProvider {
     vscode.workspace.onDidChangeConfiguration((_) => {
       this._onDidChangeCodeLenses.fire();
     });
+
+    this.localizationRepository.onDidChange(() => {
+      this._onDidChangeCodeLenses.fire();
+    });
   }
 
   public async provideCodeLenses(document: TextDocument) {
@@ -36,7 +40,7 @@ function createLenses(document: vscode.TextDocument, localization: Localization)
 
   for (const localizableString of localization.localizableStrings) {
     for (const language of localization.availableLanguages) {
-      const translation = localizableString.translations.find((t) => t.language.name === language.name);
+      const translation = localizableString.resources.find((t) => t.language.name === language.name);
 
       if (translation === undefined) {
         const codeLens = new CodeLens(localizableString.range, {

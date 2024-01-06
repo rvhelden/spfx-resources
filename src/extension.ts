@@ -4,6 +4,7 @@ import { CodelensProvider } from "./CodelensProvider";
 import { LocalizationRepository } from "./repositories/LocalizationRepository";
 import registerAddTranslation from "./handlers/AddTranslationHandler";
 import registerTranslateFrom from "./handlers/TranslateFromHandler";
+import registerTranslateFromTo from "./handlers/TranslateFromToHandler";
 import registerEditResource from "./handlers/EditResourceHandler";
 import registerRefresh from "./handlers/RefreshHandler";
 import registerOpenFile from "./handlers/OpenFileHandler";
@@ -22,6 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   registerAddTranslation(localizationRepository);
   registerTranslateFrom(localizationRepository);
+  registerTranslateFromTo(localizationRepository);
   registerEditResource();
   registerRefresh(spfxProvider);
   registerOpenFile();

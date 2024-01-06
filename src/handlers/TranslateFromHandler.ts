@@ -9,6 +9,18 @@ class TranslateFrom {
   ) {}
 
   public async execute(localizableString: LocalizableString) {
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `Translating ${localizableString.name}`,
+      },
+      async () => {
+        await this.translate(localizableString);
+      }
+    );
+  }
+
+  private async translate(localizableString: LocalizableString) {
     const fromLanguage = await this.getFromLanguage(localizableString);
     if (fromLanguage === undefined) {
       return;
@@ -20,20 +32,16 @@ class TranslateFrom {
     }
 
     for (const translation of translations) {
-      const language = localizableString.translations.find((t) => t.language.name === translation.language);
-      if (language === undefined) {
-        continue;
+      const targetLanguage = localizableString.availableLanguages.find((t) => t.name === translation.language);
+      if (targetLanguage !== undefined) {
+        await this.localizationRepository.addOrUpdate(localizableString, targetLanguage, translation.text);
       }
-
-      language.text = translation.text;
     }
-
-    await this.localizationRepository.updateTranslation(localizableString);
   }
 
   private async getFromLanguage(localizableString: LocalizableString) {
     return await vscode.window.showQuickPick(
-      localizableString.translations.map((t) => t.language.name),
+      localizableString.resources.map((t) => t.language.name),
       {
         title: "translate from",
       }
@@ -41,14 +49,14 @@ class TranslateFrom {
   }
 
   private async translateString(localizableString: LocalizableString, fromLanguage: string) {
-    const sourceString = localizableString.translations.find((t) => t.language.name === fromLanguage);
+    const sourceString = localizableString.resources.find((t) => t.language.name === fromLanguage);
     if (sourceString === undefined) {
       return;
     }
 
-    const targetLanguages = localizableString.translations
-      .filter((t) => t.language.name !== fromLanguage)
-      .map((t) => t.language.name);
+    const targetLanguages = localizableString.availableLanguages
+      .filter((t) => t.name !== fromLanguage)
+      .map((t) => t.name);
 
     return await this.translationRepository.translate(fromLanguage, sourceString.text, targetLanguages);
   }

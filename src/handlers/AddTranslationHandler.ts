@@ -2,21 +2,24 @@ import * as vscode from "vscode";
 import { LocalizableString, Language, LocalizationRepository } from "../repositories/LocalizationRepository";
 
 function addTranslationHandler(localizationRepository: LocalizationRepository) {
-  return async (localizableString: LocalizableString, language: Language, open?: boolean) => {
-    const translation = await vscode.window.showInputBox({ title: "translation", placeHolder: "my translation" });
-    if (translation === undefined) {
-      return;
-    }
-
-    const range = await localizationRepository.addTranslation(localizableString, language, translation);
-
-    if (open) {
-      const document = await vscode.workspace.openTextDocument(language.fileName);
-      await vscode.window.showTextDocument(document, {
-        selection: range,
-      });
+  return async (localizableString: LocalizableString, language: Language) => {
+    if (localizableString.resources.length > 0) {
+      await vscode.commands.executeCommand("spfx-resources.translate-from-to", localizableString, language);
+    } else {
+      await createNew(localizationRepository, localizableString, language);
     }
   };
+}
+
+async function createNew(
+  localizationRepository: LocalizationRepository,
+  localizableString: LocalizableString,
+  language: Language
+) {
+  const translation = await vscode.window.showInputBox({ title: "translation", placeHolder: "my translation" });
+  if (translation !== undefined) {
+    await localizationRepository.addTranslation(localizableString, language, translation);
+  }
 }
 
 function register(localizationRepository: LocalizationRepository) {

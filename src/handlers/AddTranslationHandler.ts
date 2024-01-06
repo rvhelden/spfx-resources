@@ -18,7 +18,7 @@ async function createNew(
 ) {
   const translation = await vscode.window.showInputBox({ title: "translation", placeHolder: "my translation" });
   if (translation !== undefined) {
-    await localizationRepository.addTranslation(localizableString, language, translation);
+    await localizationRepository.addOrUpdate(localizableString, language, translation);
   }
 }
 

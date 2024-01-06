@@ -2,7 +2,9 @@ import * as vscode from "vscode";
 import { SPFxTreeProvider } from "./SPFxTreeProvider";
 import { CodelensProvider } from "./CodelensProvider";
 import { LocalizationRepository } from "./repositories/LocalizationRepository";
+import registerAddLanguage from "./handlers/AddLanguageHandler";
 import registerAddTranslation from "./handlers/AddTranslationHandler";
+import registerTranslateAll from "./handlers/TranslateAllHandler";
 import registerTranslateFrom from "./handlers/TranslateFromHandler";
 import registerTranslateFromTo from "./handlers/TranslateFromToHandler";
 import registerEditResource from "./handlers/EditResourceHandler";
@@ -21,6 +23,8 @@ export function activate(context: vscode.ExtensionContext) {
   const localizationRepository = new LocalizationRepository();
   const spfxProvider = new SPFxTreeProvider();
 
+  registerAddLanguage();
+  registerTranslateAll();
   registerAddTranslation(localizationRepository);
   registerTranslateFrom(localizationRepository);
   registerTranslateFromTo(localizationRepository);

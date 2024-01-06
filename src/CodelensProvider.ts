@@ -24,17 +24,22 @@ export class CodelensProvider implements CodeLensProvider {
   public async provideCodeLenses(document: TextDocument) {
     const localization = await this.localizationRepository.getLocalization(document.fileName);
     if (localization !== undefined) {
-      return createLenses(document, localization);
+      return createLenses(localization);
     }
   }
 }
 
-function createLenses(document: vscode.TextDocument, localization: Localization) {
+function createLenses(localization: Localization) {
   const codeLenses = [
     new CodeLens(localization.range, {
       title: "add language",
       command: "spfx-resources.add-language",
-      arguments: [document.fileName],
+      arguments: [localization],
+    }),
+    new CodeLens(localization.range, {
+      title: "translate all",
+      command: "spfx-resources.translate-all",
+      arguments: [localization],
     }),
   ];
 

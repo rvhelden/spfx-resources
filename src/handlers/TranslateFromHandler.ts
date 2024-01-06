@@ -8,22 +8,24 @@ class TranslateFrom {
     private translationRepository: TranslationRepository
   ) {}
 
-  public async execute(localizableString: LocalizableString) {
+  public async execute(localizableString: LocalizableString, fromLanguage: string | undefined) {
     await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
         title: `Translating ${localizableString.name}`,
       },
       async () => {
-        await this.translate(localizableString);
+        await this.translate(localizableString, fromLanguage);
       }
     );
   }
 
-  private async translate(localizableString: LocalizableString) {
-    const fromLanguage = await this.getFromLanguage(localizableString);
+  private async translate(localizableString: LocalizableString, fromLanguage: string | undefined) {
     if (fromLanguage === undefined) {
-      return;
+      fromLanguage = await this.getFromLanguage(localizableString);
+      if (fromLanguage === undefined) {
+        return;
+      }
     }
 
     const translations = await this.translateString(localizableString, fromLanguage);

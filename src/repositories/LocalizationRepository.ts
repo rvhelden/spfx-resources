@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as ts from "typescript";
 import { createRange, findAll } from "../Typescript";
+import { PropertyAssignment, SourceFile } from "typescript";
 
 export type Language = {
   name: string;
@@ -22,6 +23,7 @@ export type LocalizableString = {
   availableLanguages: Language[];
   range: vscode.Range;
   name: string;
+  uri: vscode.Uri;
   resources: Resource[];
 };
 
@@ -62,7 +64,7 @@ export class LocalizationRepository {
     });
   }
 
-  public async getLocalization(fileName: string) {
+  public async getLocalization(fileName: string): Promise<Localization | undefined> {
     const source = await this.parseFile(fileName);
     const interfaces = this.getInterfaceDeclarations(source);
     const declaration = interfaces.find((i) => i.name.text.endsWith("Strings"));
@@ -87,60 +89,83 @@ export class LocalizationRepository {
     const entry = this.findResourceEntry(source, localizableString.name);
 
     if (entry === undefined) {
-      return await this.addTranslation(localizableString, language, translation);
+      return await this.addTranslation(source, language, localizableString.name, translation);
     } else {
-      return await this.updateTranslation(localizableString);
+      return await this.updateTranslation(source, entry, language, translation);
     }
   }
 
-  public async addTranslation(
-    localizableString: LocalizableString,
-    language: Language,
-    translation: string
-  ): Promise<vscode.Range | undefined> {
-    const source = await this.parseFile(language.fileName);
-    const lastPropertyAssignment = this.getResourceEntries(source).pop();
-    if (lastPropertyAssignment === undefined) {
-      return undefined;
+  private getInsertAt(source: ts.SourceFile) {
+    const resources = this.getResourceEntries(source);
+    let node: ts.Node | undefined = resources.pop();
+    if (node !== undefined) {
+      return {
+        at: "end",
+        position: createRange(source, node).end,
+      } as const;
     }
 
-    const range = createRange(source, lastPropertyAssignment);
+    node = this.getObjectLiteralExpression(source).pop();
+    if (node !== undefined) {
+      const position = createRange(source, node).start;
+      return {
+        at: "start",
+        position: position.with({ character: position.character + 1 }),
+      } as const;
+    }
 
-    const text = `,\n\t\t${localizableString.name}: "${translation}"`;
+    return undefined;
+  }
+
+  private async addTranslation(
+    source: SourceFile,
+    language: Language,
+    name: string,
+    translation: string
+  ): Promise<vscode.Range | undefined> {
+    const insert = this.getInsertAt(source);
+
+    if (insert === undefined) {
+      vscode.window.showErrorMessage("Could not find a place to add the translation");
+      return;
+    }
+
+    const text = `\n\t\t${name}: "${translation}"`;
 
     const document = await vscode.workspace.openTextDocument(language.fileName);
 
     const edit = new vscode.WorkspaceEdit();
-    edit.insert(document.uri, range.end, text);
+    if (insert.at === "end") {
+      edit.insert(document.uri, insert.position, `\n, ${text}`);
+    } else {
+      edit.insert(document.uri, insert.position, `\n${text}`);
+    }
 
     await vscode.workspace.applyEdit(edit);
     await document.save();
 
     return new vscode.Range(
-      new vscode.Position(range.start.line + 1, 2),
-      new vscode.Position(range.start.line + 1, text.length - 1)
+      new vscode.Position(insert.position.line + 1, 2),
+      new vscode.Position(insert.position.line + 1, text.length - 1)
     );
   }
 
-  public async updateTranslation(localizableString: LocalizableString) {
-    for (const resource of localizableString.resources) {
-      const source = await this.parseFile(resource.language.fileName);
-      const entry = this.findResourceEntry(source, resource.name);
-      if (entry === undefined) {
-        continue;
-      }
+  private async updateTranslation(
+    source: SourceFile,
+    entry: PropertyAssignment,
+    language: Language,
+    translation: string
+  ) {
+    const document = await vscode.workspace.openTextDocument(language.fileName);
 
-      const document = await vscode.workspace.openTextDocument(resource.language.fileName);
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(document.uri, createRange(source, entry.initializer), `"${translation}"`);
 
-      const edit = new vscode.WorkspaceEdit();
-      edit.replace(document.uri, createRange(source, entry.initializer), `"${resource.text}"`);
-
-      await vscode.workspace.applyEdit(edit);
-      await document.save();
-    }
+    await vscode.workspace.applyEdit(edit);
+    await document.save();
   }
 
-  private async getLocalizableStrings(languages: Language[], source: ts.SourceFile) {
+  private async getLocalizableStrings(languages: Language[], source: ts.SourceFile): Promise<LocalizableString[]> {
     const translations = await this.getTranslations(languages);
 
     const properties = this.getPropertySignatures(source);
@@ -154,6 +179,7 @@ export class LocalizationRepository {
         availableLanguages: languages,
         range: createRange(source, signature),
         name,
+        uri: vscode.Uri.file(source.fileName),
         resources: translations.filter((t) => t.name === name),
       };
 
@@ -163,7 +189,7 @@ export class LocalizationRepository {
     return localizableStrings;
   }
 
-  public availableLanguages(fileName: string) {
+  private availableLanguages(fileName: string) {
     const folder = path.dirname(fileName);
     const files = fs.readdirSync(path.dirname(fileName));
 
@@ -252,6 +278,10 @@ export class LocalizationRepository {
 
   private getResourceEntries(source: ts.SourceFile) {
     return findAll<ts.PropertyAssignment>(source, ts.isPropertyAssignment);
+  }
+
+  private getObjectLiteralExpression(source: ts.SourceFile) {
+    return findAll<ts.ObjectLiteralExpression>(source, ts.isObjectLiteralExpression);
   }
 
   private getPropertySignatures(source: ts.SourceFile) {

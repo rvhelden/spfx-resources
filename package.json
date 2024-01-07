@@ -4,7 +4,7 @@
   "publisher": "dreamcode",
   "repository": "https://github.com/rvhelden/spfx-resources",
   "description": "An extension to manage SharePoint SPFx localization resources",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -93,7 +93,7 @@
         {
           "id": "spfx-resources",
           "title": "SPFx Resources",
-          "icon": "assets/activitybar.svg"
+          "icon": "assets/icon.svg"
         }
       ]
     },

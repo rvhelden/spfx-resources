@@ -10,7 +10,6 @@ import registerTranslateFromTo from "./handlers/TranslateFromToHandler";
 import registerEditResource from "./handlers/EditResourceHandler";
 import registerRefresh from "./handlers/RefreshHandler";
 import registerOpenFile from "./handlers/OpenFileHandler";
-import registerDeleteResource from "./handlers/DeleteResourceHandler";
 import { TranslationsActionProvider } from "./TranslationsActionProvider";
 
 const resourceSelector = {
@@ -31,7 +30,6 @@ export function activate(context: vscode.ExtensionContext) {
   registerEditResource();
   registerRefresh(spfxProvider);
   registerOpenFile();
-  registerDeleteResource(spfxProvider);
 
   context.subscriptions.push(
     vscode.languages.registerCodeLensProvider(resourceSelector, new CodelensProvider(localizationRepository))

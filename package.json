@@ -1,15 +1,22 @@
 {
   "name": "spfxresources",
   "displayName": "SPFx Resources",
-  "description": "",
-  "version": "0.0.1",
+  "publisher": "dreamcode",
+  "repository": "dreamcode",
+  "description": "https://github.com/rvhelden/spfx-resources",
+  "version": "0.0.2",
   "engines": {
-    "vscode": "^1.81.0"
+    "vscode": "^1.85.0"
   },
   "categories": [
     "Other"
   ],
-  "main": "./out/extension.js",
+  "vsce": {
+    "baseImagesUrl": "https://www.dreamcode.nl/logo.png",
+    "dependencies": true,
+    "yarn": true
+  },
+  "main": "./out/main.js",
   "activationEvents": [
     "workspaceContains:**/loc/*",
     "onLanguage:typescript"
@@ -64,47 +71,12 @@
         }
       }
     },
-    "commands": [
-      {
-        "command": "spfx-resources.refresh",
-        "title": "Refresh",
-        "icon": "assets/refresh.svg"
-      },
-      {
-        "command": "spfx-resources.edit-resource",
-        "title": "Edit",
-        "icon": "assets/edit.svg"
-      },
-      {
-        "command": "spfx-resources.create-resource",
-        "title": "Create"
-      },
-      {
-        "command": "spfx-resources.delete-resource",
-        "title": "Delete",
-        "icon": "assets/bin.svg"
-      }
-    ],
     "menus": {
       "view/title": [
         {
           "command": "spfx-resources.refresh",
           "when": "view == spfx-resource-projects",
           "group": "navigation"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "spfx-resources.delete-resource",
-          "when": "view == spfx-resource-projects && viewItem == NamedResource",
-          "group": "inline",
-          "order": 2
-        },
-        {
-          "command": "spfx-resources.edit-resource",
-          "when": "view == spfx-resource-projects && viewItem == NamedResource",
-          "group": "inline",
-          "order": 1
         }
       ]
     },
@@ -127,28 +99,24 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "yarn run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "yarn run compile && yarn run lint",
-    "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "deploy": "vsce publish --yarn",
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch"
   },
   "devDependencies": {
     "@types/node": "20.10.4",
     "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^6.13.2",
     "@typescript-eslint/parser": "^6.13.2",
+    "esbuild": "^0.19.11",
     "eslint": "^8.55.0",
     "glob": "^10.3.10",
     "typescript": "^5.3.3"
   },
   "dependencies": {
     "arktype": "^1.0.28-alpha",
-    "ignore": "^5.3.0",
-    "openai": "^4.24.1",
-    "vscode-languageclient": "^9.0.1",
-    "vscode-languageserver": "^9.0.1",
-    "vscode-languageserver-textdocument": "^1.0.11"
+    "openai": "^4.24.1"
   }
 }

@@ -2,7 +2,7 @@ import { workspace } from "vscode";
 import { NamedResource, ProjectItem, ResourcePath } from "../Types";
 import * as path from "path";
 import * as fs from "fs";
-import { type, narrow, Problems, Type } from "arktype";
+import { type, narrow, Type } from "arktype";
 
 export class ResourceRepository {
   public async getProjects() {

@@ -3,6 +3,8 @@ import OpenAI from "openai";
 import * as vscode from "vscode";
 import { arrayOf, type } from "arktype";
 import { ChatCompletionTool } from "openai/resources";
+import { ITranslationService } from "./TranslationService";
+import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completions";
 
 const Translations = type({
   translations: arrayOf(
@@ -15,8 +17,12 @@ const Translations = type({
 
 const systemMessage = `You are a text translator, you translate the text from one language to serveral other languaes. You are given a text in a language and a list of languages to translate it to.`;
 
-export class TranslationRepository {
-  public async translate(fromLanguage: string, fromString: string, targetLanguages: string[]) {
+export class OpenAITranslationService implements ITranslationService {
+  public async translate(
+    fromLanguage: string,
+    fromString: string,
+    targetLanguages: string[]
+  ): Promise<{ language: string; text: string }[]> {
     const completion = await this.fetchOpenAI(fromLanguage, fromString, targetLanguages);
 
     const response = Translations(JSON.parse(completion.choices[0].message.tool_calls![0].function.arguments));
@@ -33,12 +39,14 @@ export class TranslationRepository {
 
   private async fetchOpenAI(fromLanguage: string, fromString: string, targetLanguages: string[]) {
     const config = vscode.workspace.getConfiguration("spfxresources");
-    const apiKey = config.get<string>("openAIKey");
+    const apiKey = config.get<string>("openai-key");
+    const endpoint = config.get<string>("openai-endpoint");
+    const model = config.get<string>("openai-model", "gpt-3.5-turbo") as ChatCompletionCreateParamsBase["model"];
 
-    const openai = new OpenAI({ apiKey });
+    const openai = new OpenAI({ apiKey, baseURL: endpoint });
 
     return await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model,
       messages: [
         {
           role: "system",

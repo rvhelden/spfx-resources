@@ -1,11 +1,11 @@
 import * as vscode from "vscode";
 import { LocalizableString, LocalizationRepository } from "../repositories/LocalizationRepository";
-import { TranslationRepository } from "../repositories/TranslationRepository";
+import { ITranslationService, TranslationServiceFactory } from "../Translation/TranslationService";
 
 class TranslateFrom {
   constructor(
     private localizationRepository: LocalizationRepository,
-    private translationRepository: TranslationRepository
+    private translationRepository: ITranslationService
   ) {}
 
   public async execute(localizableString: LocalizableString, fromLanguage: string | undefined) {
@@ -65,7 +65,7 @@ class TranslateFrom {
 }
 
 function register(localizationRepository: LocalizationRepository) {
-  const handler = new TranslateFrom(localizationRepository, new TranslationRepository());
+  const handler = new TranslateFrom(localizationRepository, TranslationServiceFactory.getService());
 
   vscode.commands.registerCommand("spfx-resources.translate-from", handler.execute.bind(handler));
 }

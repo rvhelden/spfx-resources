@@ -18,10 +18,49 @@
     "configuration": {
       "title": "SPFx Resources",
       "properties": {
-        "spfxresources.openAIKey": {
+        "spfxresources.translationService": {
           "type": "string",
+          "order": 0,
+          "enum": [
+            "Azure",
+            "OpenAI"
+          ],
+          "default": "Azure",
+          "description": "Choose your translation service"
+        },
+        "spfxresources.azure-endpoint": {
+          "type": "string",
+          "order": 1,
+          "default": "https://api.cognitive.microsofttranslator.com/",
+          "description": "Azure Translation Service Endpoint"
+        },
+        "spfxresources.azure-subscriptionKey": {
+          "type": "string",
+          "order": 2,
+          "default": "",
+          "description": "Azure Translation Service Subscription Key"
+        },
+        "spfxresources.openai-key": {
+          "type": "string",
+          "order": 3,
           "default": "",
           "description": "The API key for OpenAI."
+        },
+        "spfxresources.openai-endpoint": {
+          "type": "string",
+          "order": 4,
+          "default": "https://api.openai.com/v1",
+          "description": "The endpoint for OpenAI."
+        },
+        "spfxresources.openai-model": {
+          "type": "string",
+          "order": 5,
+          "enum": [
+            "gpt-3.5-turbo",
+            "gpt-4"
+          ],
+          "default": "gpt-3.5-turbo",
+          "description": "The open ai model to use for translations."
         }
       }
     },

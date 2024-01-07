@@ -2,9 +2,9 @@
   "name": "spfxresources",
   "displayName": "SPFx Resources",
   "publisher": "dreamcode",
-  "repository": "dreamcode",
-  "description": "https://github.com/rvhelden/spfx-resources",
-  "version": "0.0.2",
+  "repository": "https://github.com/rvhelden/spfx-resources",
+  "description": "An extension to manage SharePoint SPFx localization resources",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -17,6 +17,7 @@
     "yarn": true
   },
   "main": "./out/main.js",
+  "icon": "assets/icon.png",
   "activationEvents": [
     "workspaceContains:**/loc/*",
     "onLanguage:typescript"
@@ -71,6 +72,13 @@
         }
       }
     },
+    "commands": [
+      {
+        "command": "spfx-resources.refresh",
+        "title": "Refresh",
+        "icon": "assets/refresh.svg"
+      }
+    ],
     "menus": {
       "view/title": [
         {

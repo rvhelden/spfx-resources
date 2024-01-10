@@ -9,6 +9,7 @@ import registerTranslateFrom from "./handlers/TranslateFromHandler";
 import registerTranslateFromTo from "./handlers/TranslateFromToHandler";
 import registerEditResource from "./handlers/EditResourceHandler";
 import registerRefresh from "./handlers/RefreshHandler";
+import registerRemoveTranslation from "./handlers/RemoveTranslationHandler";
 import registerOpenFile from "./handlers/OpenFileHandler";
 import { TranslationsActionProvider } from "./TranslationsActionProvider";
 
@@ -29,6 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
   registerTranslateFromTo(localizationRepository);
   registerEditResource();
   registerRefresh(spfxProvider);
+  registerRemoveTranslation(localizationRepository);
   registerOpenFile();
 
   context.subscriptions.push(

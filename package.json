@@ -4,7 +4,7 @@
   "publisher": "dreamcode",
   "repository": "https://github.com/rvhelden/spfx-resources",
   "description": "An extension to manage SharePoint SPFx localization resources",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -108,10 +108,10 @@
   },
   "scripts": {
     "deploy": "vsce publish --yarn",
-    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "vscode:prepublish": "yarn esbuild-base -- --minify",
     "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
-    "esbuild": "npm run esbuild-base -- --sourcemap",
-    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch"
+    "esbuild": "yarn esbuild-base -- --sourcemap",
+    "watch": "yarn esbuild-base -- --sourcemap --watch"
   },
   "devDependencies": {
     "@types/node": "20.10.4",

@@ -1,8 +1,8 @@
-import * as vscode from "vscode";
 import { LocalizableString, LocalizationRepository } from "./repositories/LocalizationRepository";
+import { CodeAction, CodeActionKind, CodeActionProvider, Range, Selection, TextDocument } from "vscode";
 
-export class TranslationsActionProvider implements vscode.CodeActionProvider {
-  public static readonly providedCodeActionKinds = [vscode.CodeActionKind.QuickFix];
+export class TranslationsActionProvider implements CodeActionProvider {
+  public static readonly providedCodeActionKinds = [CodeActionKind.QuickFix];
 
   private readonly localizationRepository;
 
@@ -10,13 +10,8 @@ export class TranslationsActionProvider implements vscode.CodeActionProvider {
     this.localizationRepository = localizationRepository;
   }
 
-  public async provideCodeActions(
-    document: vscode.TextDocument,
-    range: vscode.Range | vscode.Selection,
-    context: vscode.CodeActionContext,
-    token: vscode.CancellationToken
-  ): Promise<vscode.CodeAction[]> {
-    const actions = new Array<vscode.CodeAction>();
+  public async provideCodeActions(document: TextDocument, range: Range | Selection): Promise<CodeAction[]> {
+    const actions = new Array<CodeAction>();
 
     const localisation = await this.localizationRepository.getLocalization(document.fileName);
     if (localisation === undefined) {
@@ -25,21 +20,33 @@ export class TranslationsActionProvider implements vscode.CodeActionProvider {
 
     for (const localizableString of localisation.localizableStrings) {
       if (localizableString.range.contains(range)) {
-        actions.push(this.createCommandCodeAction(localizableString));
+        actions.push(this.createTranslateFromAction(localizableString));
+        actions.push(this.createRemoveAction(localizableString));
       }
     }
 
     return actions;
   }
 
-  private createCommandCodeAction(localizableString: LocalizableString): vscode.CodeAction {
-    const action = new vscode.CodeAction("Translate from", vscode.CodeActionKind.Refactor);
+  private createRemoveAction(localizableString: LocalizableString): CodeAction {
+    const action = new CodeAction("Remove", CodeActionKind.Refactor);
+    action.command = {
+      command: "spfx-resources.remove-translation",
+      arguments: [localizableString],
+      title: "Remove translation",
+    };
+
+    return action;
+  }
+
+  private createTranslateFromAction(localizableString: LocalizableString): CodeAction {
+    const action = new CodeAction("Translate from", CodeActionKind.Refactor);
     action.command = {
       command: "spfx-resources.translate-from",
       arguments: [localizableString],
       title: "Translate from",
     };
-    action.isPreferred = true;
+
     return action;
   }
 }

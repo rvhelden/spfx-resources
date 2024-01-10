@@ -25,3 +25,19 @@ export function createRange(source: ts.SourceFile, node: ts.Node) {
     new vscode.Position(end.line, end.character)
   );
 }
+
+export function getPropertyAssignments(source: ts.SourceFile) {
+  return findAll<ts.PropertyAssignment>(source, ts.isPropertyAssignment);
+}
+
+export function getObjectLiteralExpression(source: ts.SourceFile) {
+  return findAll<ts.ObjectLiteralExpression>(source, ts.isObjectLiteralExpression);
+}
+
+export function getPropertySignatures(source: ts.SourceFile) {
+  return findAll<ts.PropertySignature>(source, ts.isPropertySignature);
+}
+
+export function getInterfaceDeclarations(source: ts.SourceFile) {
+  return findAll<ts.InterfaceDeclaration>(source, ts.isInterfaceDeclaration);
+}
